@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function userProfile() {
+      return get(/databases/$(db)/documents/users/$(request.auth.uid));
+    }
+    function isAdmin() {
+      return request.auth != null
+        && userProfile().data != null
+        && userProfile().data.role == 'admin';
+    }
+    function shopId() { return userProfile().data.coffeeshop_id; }
+    function isMissingShopId(res) { return res.data.coffeeshop_id == null; }
+
+    // Профиль
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // ---- Sections ----
+    match /sections/{id} {
+      // READ: админ той же точки; + временно разрешаем читать "старые" документы без поля
+      allow read: if isAdmin() && (resource.data.coffeeshop_id == shopId() || isMissingShopId(resource));
+      // CREATE: новая секция только своей точки
+      allow create: if isAdmin() && request.resource.data.coffeeshop_id == shopId();
+      // UPDATE: либо обычный апдейт в своей точке, либо МИГРАЦИЯ — когда поле отсутствовало и мы добавляем его
+      allow update: if isAdmin() && (
+          (resource.data.coffeeshop_id == shopId() && request.resource.data.coffeeshop_id == resource.data.coffeeshop_id) ||
+          (isMissingShopId(resource) && request.resource.data.coffeeshop_id == shopId())
+        );
+      // DELETE: разрешаем удалить и старые документы без поля
+      allow delete: if isAdmin() && (resource.data.coffeeshop_id == shopId() || isMissingShopId(resource));
+    }
+
+    // ---- Tasks ----
+    match /tasks/{id} {
+      // READ: админ своей точки; + временно читаем "старые" задачи без поля
+      allow read: if isAdmin() && (resource.data.coffeeshop_id == shopId() || isMissingShopId(resource));
+      // CREATE
+      allow create: if isAdmin() && request.resource.data.coffeeshop_id == shopId();
+      // UPDATE: обычный кейс ИЛИ добавление недостающего поля при миграции
+      allow update: if isAdmin() && (
+          (resource.data.coffeeshop_id == shopId() && request.resource.data.coffeeshop_id == resource.data.coffeeshop_id) ||
+          (isMissingShopId(resource) && request.resource.data.coffeeshop_id == shopId())
+        );
+      // DELETE: разрешаем удалить и старые документы без поля
+      allow delete: if isAdmin() && (resource.data.coffeeshop_id == shopId() || isMissingShopId(resource));
+    }
+
+    // ---- Task Results (только чтение из админки)
+    match /task_results/{id} {
+      allow read: if isAdmin() && (resource.data.coffeeshop_id == shopId() || isMissingShopId(resource));
+      allow create, update, delete: if false;
+    }
+  }
+}
