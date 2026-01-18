@@ -1,51 +1,65 @@
-// src/types.ts
+// Roles
 export type Role = 'superadmin' | 'admin' | 'staff'
 
+export interface GeoPoint {
+  latitude: number
+  longitude: number
+}
+
+// 1) Users (Пользователи) → userList
 export interface UserProfile {
   id: string
   name: string
   role: Role
-  coffeeshop_id?: string // у суперадмина может быть undefined
+  login: string
+  password: string
+  coffeeshop_id: string | null // nullable (для superadmin)
+  coffeeshop_location?: GeoPoint // чтобы не делать лишний запрос к Coffeeshops
 }
 
+// 2) Coffeeshops (Кофейни)
 export interface Coffeeshop {
   id: string
   name: string
-  location?: string
-  admin_id: string
+  location: GeoPoint
 }
 
-export type RepeatType = 'daily' | 'weekdays' | 'once'
-
-export interface Section {
-  id: string
-  coffeeshop_id: string
-  title: string
-  start_time: string // '09:00'
-  end_time: string   // '13:00'
-  repeat_type: RepeatType
-  created_at?: number
-}
-
+// 3) Tasks (Задачи)
 export type TaskType = 'checkbox' | 'photo'
 
 export interface Task {
   id: string
-  coffeeshop_id: string // дублируем для упрощения правил/запросов
-  section_id: string
+  days: number[] // List<Int> (1..7)
   title: string
   type: TaskType
-  deadline: string      // '09:30' (внутри окна секции)
-  is_active: boolean
-  created_at?: number
+  expected_finish_time: string // e.g. '09:30' or '18:00'
 }
+
+// 4) TaskResults (Результаты выполнения задач)
+export type TaskResultStatus = 'Not_Done' | 'In_Review' | 'Approved' | 'Rejected'
 
 export interface TaskResult {
   id: string
-  coffeeshop_id: string
-  task_id: string
+  task_id: string | null
+  user_id: string | null
+  status: TaskResultStatus
+
+  date: string // 'YYYY-MM-DD' ✅ обязательно
+  timestamp: number // created_at (ms) — когда создана запись на день
+
+  photo_url?: string | null
+  review_comment?: string | null
+
+  expected_finish_time?: string | null // '09:30'
+  actual_finish_time?: number | null // ms
+}
+
+// 5) Shifts (Смены)
+export interface Shift {
+  id: string
+  location: GeoPoint
   user_id: string
-  status: 'done' | 'missed'
-  photo_url?: string
-  timestamp: number
+  date: string // e.g. '2023-08-15'
+  check_in: number // timestamp (Firebase)
+  check_out: number // timestamp (Firebase)
 }

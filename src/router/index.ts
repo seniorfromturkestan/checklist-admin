@@ -1,4 +1,3 @@
-// src/router/index.ts
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -10,7 +9,9 @@ const routes = [
     children: [
       { path: 'sections', component: () => import('@/pages/Sections.vue') },
       { path: 'history', component: () => import('@/pages/History.vue') },
+      { path: 'staff', component: () => import('@/pages/Staff.vue') },
       { path: 'stats', component: () => import('@/pages/Stats.vue') },
+      { path: 'review', component: () => import('@/pages/Review.vue') },
       { path: '', redirect: '/admin/sections' },
     ],
     meta: { requiresAdmin: true },

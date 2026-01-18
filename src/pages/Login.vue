@@ -49,7 +49,7 @@ const submit = async () => {
 <template>
   <div class="login">
     <el-card style="max-width:420px;margin:64px auto;">
-      <h2>Вход (админ точки)</h2>
+      <h2>Вход</h2>
       <el-form @submit.prevent="submit">
         <el-form-item label="Email">
           <el-input v-model="email" autocomplete="username" />

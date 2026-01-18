@@ -1,49 +1,65 @@
-<!-- src/pages/AdminLayout.vue -->
 <script setup lang="ts">
-import { useAuthStore } from '@/stores/auth'
-import { useRouter, useRoute } from 'vue-router'
 import { computed } from 'vue'
-const auth = useAuthStore()
-const router = useRouter()
+import { useRoute } from 'vue-router'
+
 const route = useRoute()
 
-const active = computed(() => route.path)
-const logout = async () => {
-  await auth.logout()
-  router.push('/login')
-}
+const active = computed(() => {
+  const p = route.path
+  if (p.startsWith('/admin/sections')) return '/admin/sections'
+  if (p.startsWith('/admin/history')) return '/admin/history'
+  if (p.startsWith('/admin/review')) return '/admin/review'
+  if (p.startsWith('/admin/staff')) return '/admin/staff'
+  if (p.startsWith('/admin/stats')) return '/admin/stats'
+  return '/admin/sections'
+})
 </script>
 
 <template>
-  <el-container style="height:100vh;">
-    <el-aside width="220px" style="border-right:1px solid var(--el-border-color);">
-      <div style="padding:16px; font-weight:700;">Админ • Менеджер точки</div>
-      <el-menu :default-active="active" router>
-        <el-menu-item index="/admin/sections">
-          <i class="el-icon-menu" /> <span style="margin-left:8px;">Секции</span>
-        </el-menu-item>
-        <el-menu-item index="/admin/history">
-          <i class="el-icon-document" /> <span style="margin-left:8px;">История</span>
-        </el-menu-item>
-        <el-menu-item index="/admin/stats">
-          <i class="el-icon-data-analysis" /> <span style="margin-left:8px;">Статистика</span>
-        </el-menu-item>
-      </el-menu>
-    </el-aside>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar__title">Checklist Admin</div>
 
-    <el-container>
-      <el-header style="display:flex; align-items:center; justify-content:space-between;">
-        <div>Панель управления</div>
-        <div style="display:flex; gap:12px; align-items:center;">
-          <el-tag type="info" v-if="auth.profile">
-            {{ auth.profile.name || 'Admin' }}
-          </el-tag>
-          <el-button @click="logout">Выйти</el-button>
-        </div>
-      </el-header>
-      <el-main style="background: var(--el-fill-color-light);">
-        <router-view />
-      </el-main>
-    </el-container>
-  </el-container>
+      <el-menu :default-active="active" router class="sidebar__menu">
+        <el-menu-item index="/admin/sections">Разделы</el-menu-item>
+        <el-menu-item index="/admin/history">История</el-menu-item>
+        <el-menu-item index="/admin/review">Проверка</el-menu-item>
+        <el-menu-item index="/admin/staff">Сотрудники</el-menu-item>
+        <el-menu-item index="/admin/stats">Статистика</el-menu-item>
+      </el-menu>
+    </aside>
+
+    <main class="content">
+      <router-view />
+    </main>
+  </div>
 </template>
+
+<style scoped>
+.layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 14px;
+}
+
+.sidebar__title {
+  font-weight: 900;
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+.sidebar__menu {
+  width: 100%;
+}
+
+.content {
+  padding: 16px;
+  min-width: 0;        /* ✅ главное: разрешаем колонке сжиматься */
+  overflow-x: hidden;  /* чтобы не было общего горизонтального скролла */
+}
+</style>

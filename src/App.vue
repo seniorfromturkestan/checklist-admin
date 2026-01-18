@@ -8,5 +8,21 @@ import { RouterView } from 'vue-router'
 
 <style>
 html, body, #app { height: 100%; }
-body { margin: 0; font-family: Inter, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+body { margin: 0; font-family: "Montserrat";}
+
+.el-form-item,
+.el-input,
+.el-button,
+.el-placeholder,
+.el-table {
+  font-family: 'Montserrat';
+}
+
+.el-input__inner::placeholder,
+.el-textarea__inner::placeholder {
+  font-family: 'Montserrat';
+  font-weight: 400;
+  color: #9ca3af; /* мягкий серый */
+}
+
 </style>
