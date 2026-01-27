@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { onAuthStateChanged, type User } from 'firebase/auth'
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from '@/firebase'
 
@@ -56,6 +56,27 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  const signIn = async (email: string, password: string) => {
+    const cred = await signInWithEmailAndPassword(auth, email, password)
+    fbUser.value = cred.user
+    await loadProfile(cred.user.uid)
+    ready.value = true
+    return cred.user
+  }
+
+  const logout = async () => {
+    try {
+      await signOut(auth)
+    } catch {
+      // signOut может отдать ошибку в редких случаях (сеть/состояние),
+      // но UI выходить должен всегда.
+    }
+    fbUser.value = null
+    profile.value = null
+    // keep ready=true so router guards don't wait forever
+    ready.value = true
+  }
+
   const init = async () => {
     if (ready.value) return
 
@@ -83,6 +104,8 @@ export const useAuthStore = defineStore('auth', () => {
     fbUser,
     profile,
     ready,
+    signIn,
+    logout,
     init,
     clear,
   }

@@ -10,17 +10,32 @@ import { RouterView } from 'vue-router'
 html, body, #app { height: 100%; }
 body { margin: 0; font-family: "Montserrat";}
 
+/* Element Plus: enforce Montserrat everywhere */
 .el-form-item,
 .el-input,
 .el-button,
-.el-placeholder,
-.el-table {
-  font-family: 'Montserrat';
+.el-table,
+.el-select,
+.el-dialog,
+.el-drawer,
+.el-tag,
+.el-menu,
+.el-dropdown,
+.el-pagination {
+  font-family: 'Montserrat', sans-serif;
 }
 
+/* actual typed text */
+.el-input__inner,
+.el-textarea__inner,
+.el-select__selected-item {
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* placeholder */
 .el-input__inner::placeholder,
 .el-textarea__inner::placeholder {
-  font-family: 'Montserrat';
+  font-family: 'Montserrat', sans-serif;
   font-weight: 400;
   color: #9ca3af; /* мягкий серый */
 }

@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { ElMessage } from 'element-plus'
 
 const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
 
 const active = computed(() => {
   const p = route.path
@@ -13,6 +17,23 @@ const active = computed(() => {
   if (p.startsWith('/admin/stats')) return '/admin/stats'
   return '/admin/sections'
 })
+
+const adminName = computed(() => {
+  const p = auth.profile
+  return (p?.name || p?.email || p?.login || 'Админ') as string
+})
+
+const onLogout = async () => {
+  try {
+    await auth.logout()
+    ElMessage.success('Вы вышли из системы')
+    await router.replace('/login')
+  } catch (err) {
+    console.error('Logout error:', err)
+    ElMessage.success('Вы вышли из системы')
+    await router.replace('/login')
+  }
+}
 </script>
 
 <template>
@@ -30,6 +51,14 @@ const active = computed(() => {
     </aside>
 
     <main class="content">
+      <div class="topbar">
+        <div class="topbar__left">
+          <div class="topbar__title">Добро пожаловать!</div>
+          <div class="topbar__user">{{ adminName }}</div>
+        </div>
+        <el-button type="danger" plain @click="onLogout">Выйти</el-button>
+      </div>
+
       <router-view />
     </main>
   </div>
@@ -59,7 +88,38 @@ const active = computed(() => {
 
 .content {
   padding: 16px;
-  min-width: 0;        /* ✅ главное: разрешаем колонке сжиматься */
-  overflow-x: hidden;  /* чтобы не было общего горизонтального скролла */
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+}
+
+.topbar__left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.topbar__title {
+  font-weight: 900;
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.topbar__user {
+  font-weight: 900;
+  font-size: 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

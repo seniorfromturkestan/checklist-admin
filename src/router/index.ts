@@ -16,6 +16,17 @@ const routes = [
     ],
     meta: { requiresAdmin: true },
   },
+  {
+    path: '/super',
+    component: () => import('@/pages/SuperLayout.vue'),
+    children: [
+      { path: 'coffeeshops', component: () => import('@/pages/SuperCoffeeshops.vue') },
+      { path: 'users', component: () => import('@/pages/SuperUsers.vue') },
+      { path: 'overview', component: () => import('@/pages/SuperOverview.vue') },
+      { path: '', redirect: '/super/overview' },
+    ],
+    meta: { requiresSuperadmin: true },
+  },
   { path: '/:pathMatch(.*)*', redirect: '/admin/sections' },
 ]
 
@@ -24,10 +35,19 @@ const router = createRouter({ history: createWebHistory(), routes })
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
   if (!auth.ready) await auth.init()
+
+  if (to.meta.requiresSuperadmin) {
+    if (!auth.fbUser || auth.profile?.role !== 'superadmin') return '/login'
+  }
+
   if (to.meta.requiresAdmin) {
     if (!auth.fbUser || auth.profile?.role !== 'admin') return '/login'
   }
-  if (to.path === '/login' && auth.profile?.role === 'admin') return '/admin'
+
+  if (to.path === '/login') {
+    if (auth.profile?.role === 'superadmin') return '/super'
+    if (auth.profile?.role === 'admin') return '/admin'
+  }
 })
 
 export default router

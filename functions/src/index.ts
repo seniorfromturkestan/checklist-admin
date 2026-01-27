@@ -1,8 +1,26 @@
 import {onSchedule} from "firebase-functions/v2/scheduler";
+import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 
 admin.initializeApp();
 const db = admin.firestore();
+
+/**
+ * Ensures the caller is authenticated and has superadmin role.
+ * @param {string} callerUid Caller Firebase Auth UID.
+ * @return {Promise<void>} Resolves if allowed, otherwise throws HttpsError.
+ */
+async function assertSuperadmin(callerUid: string) {
+  const snap = await db.collection("Users").doc(callerUid).get();
+  const raw = snap.data() as Record<string, unknown> | undefined;
+  const role = snap.exists ? String(raw?.role ?? "") : "";
+  if (role !== "superadmin") {
+    throw new HttpsError(
+      "permission-denied",
+      "Only superadmin can create users"
+    );
+  }
+}
 
 /**
  * Formats a Date as YYYY-MM-DD.
@@ -89,5 +107,74 @@ export const fanoutDailyTasks = onSchedule(
 
       await batch.commit();
     }
+  }
+);
+
+/**
+ * Creates a Firebase Auth user + writes a profile into Firestore `Users/{uid}`.
+ * Only callable by a user with role `superadmin` in Firestore.
+ */
+export const createUserAccount = onCall(
+  {
+    region: "us-central1",
+  },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError("unauthenticated", "Sign in required");
+    }
+
+    await assertSuperadmin(request.auth.uid);
+
+    const data = request.data as Record<string, unknown>;
+    const email = String(data.email ?? "").trim().toLowerCase();
+    const password = String(data.password ?? "").trim();
+    const name = String(data.name ?? "").trim();
+    const role = String(data.role ?? "staff").trim();
+    const coffeeshopIdRaw = data.coffeeshop_id;
+    const coffeeshopId =
+      coffeeshopIdRaw == null ? null : String(coffeeshopIdRaw);
+
+    if (!email) throw new HttpsError("invalid-argument", "email is required");
+    if (!password || password.length < 6) {
+      throw new HttpsError(
+        "invalid-argument",
+        "password must be at least 6 chars"
+      );
+    }
+    if (!name) throw new HttpsError("invalid-argument", "name is required");
+
+    if (role !== "superadmin" && !coffeeshopId) {
+      throw new HttpsError(
+        "invalid-argument",
+        "coffeeshop_id required for admin/staff"
+      );
+    }
+
+    // 1) Create Auth user
+    const userRecord = await admin.auth().createUser({
+      email,
+      password,
+      displayName: name,
+    });
+
+    const uid = userRecord.uid;
+
+    // 2) Create profile in Firestore (do NOT store password)
+    await db
+      .collection("Users")
+      .doc(uid)
+      .set(
+        {
+          name,
+          login: email,
+          email,
+          role,
+          coffeeshop_id: role === "superadmin" ? null : coffeeshopId,
+          created_at: Date.now(),
+        },
+        {merge: true}
+      );
+
+    return {uid};
   }
 );

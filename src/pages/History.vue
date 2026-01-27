@@ -261,8 +261,9 @@ async function createDemoResults() {
   const { doc, setDoc, collection } = await import('firebase/firestore')
   const colRes = collection(db, `coffeeshops/${shopId}/task_results`)
   await Promise.all(
-    batch.map((r) =>
-      setDoc(doc(colRes, r.id), {
+    batch.map((r) => {
+      if (!r.task_id) return
+      return setDoc(doc(colRes, r.id), {
         // required
         task_id: r.task_id,
         timestamp: r.timestamp,
@@ -271,10 +272,12 @@ async function createDemoResults() {
 
         // optional info for admin UI
         title: r.title ?? null,
-        type: tasks.value[r.task_id]?.type ?? null,
+        type: r.task_id ? tasks.value[r.task_id]?.type ?? null : null,
 
         // deadlines (string in your current DB)
-        expected_finish_time: tasks.value[r.task_id]?.expected_finish_time ?? '09:00',
+        expected_finish_time: r.task_id
+          ? tasks.value[r.task_id]?.expected_finish_time ?? '09:00'
+          : '09:00',
         actual_finish_time: null,
 
         // review/photo
@@ -283,8 +286,8 @@ async function createDemoResults() {
 
         // staff
         user_id: r.user_id ?? null,
-      }),
-    ),
+      })
+    }),
   )
   ElMessage.success('Демо-результаты созданы')
 }
