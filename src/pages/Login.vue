@@ -226,7 +226,7 @@ const submit = async () => {
 
 .login-button {
   width: 100%;
-  height: 48px;
+  height: 44px;
   border-radius: 12px;
   font-size: 16px;
   font-weight: 500;

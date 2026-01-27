@@ -1,157 +1,167 @@
 <template>
-  <div class="review">
-    <div class="review__head">
-      <el-page-header content="Проверка фото" />
-      <div class="review__sub">
-        Очередь фото-задач: approve / reject + комментарий (опционально)
-      </div>
+  <div class="review-page">
+    <div class="page-header">
+      <h1 class="page-title">Проверка фото</h1>
+      <p class="page-subtitle">Очередь фото-задач: approve / reject + комментарий (опционально)</p>
     </div>
 
     <el-skeleton v-if="loading" :rows="8" animated />
 
-    <el-alert
-      v-else-if="errorText"
-      type="warning"
-      show-icon
-      :title="errorText"
-      description="Проверьте профиль пользователя и структуру Firestore."
-    />
+    <div v-else-if="errorText" class="warning-alert">
+      <div class="alert-icon">⚠️</div>
+      <div class="alert-content">
+        <div class="alert-title">{{ errorText }}</div>
+        <div class="alert-desc">Проверьте профиль пользователя и структуру Firestore.</div>
+      </div>
+    </div>
 
     <template v-else>
-      <!-- KPI -->
-      <el-row :gutter="12" class="review__kpi">
-        <el-col :xs="24" :sm="12" :md="6">
-          <el-card class="kpi">
-            <div class="kpi__label">In_Review</div>
-            <div class="kpi__value">{{ kpi.inReview }}</div>
-            <div class="kpi__hint">Ждут проверки</div>
-          </el-card>
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="6">
-          <el-card class="kpi">
-            <div class="kpi__label">Approved</div>
-            <div class="kpi__value">{{ kpi.Approved }}</div>
-            <div class="kpi__hint">Принято</div>
-          </el-card>
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="6">
-          <el-card class="kpi">
-            <div class="kpi__label">Rejected</div>
-            <div class="kpi__value">{{ kpi.Rejected }}</div>
-            <div class="kpi__hint">Отклонено</div>
-          </el-card>
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="6">
-          <el-card class="kpi">
-            <div class="kpi__label">Not_Done</div>
-            <div class="kpi__value">{{ kpi.notDone }}</div>
-            <div class="kpi__hint">Не выполнено</div>
-          </el-card>
-        </el-col>
-      </el-row>
-
-      <!-- filters -->
-      <el-card class="review__filters">
-        <div class="filters">
-          <el-select v-model="statusFilter" style="width: 180px">
-            <el-option label="All" value="All" />
-            <el-option label="In_Review" value="In_Review" />
-            <el-option label="Approved" value="Approved" />
-            <el-option label="Rejected" value="Rejected" />
-            <el-option label="Not_Done" value="Not_Done" />
-          </el-select>
-
-          <el-input
-            v-model="search"
-            placeholder="Поиск: задача или user_id"
-            style="width: 320px"
-            clearable
-          />
-
-          <el-date-picker
-            v-model="dateRange"
-            type="daterange"
-            range-separator="—"
-            start-placeholder="От"
-            end-placeholder="До"
-            format="DD.MM.YYYY"
-            value-format="x"
-            style="width: 300px"
-          />
-
-          <div class="filters__hint">
-            Показываются только записи с <b>photo</b> (по типу задачи или по наличию photo_url)
+      <!-- KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card kpi-card--review">
+          <div class="kpi-card__icon">⏳</div>
+          <div class="kpi-card__content">
+            <div class="kpi-card__label">In Review</div>
+            <div class="kpi-card__value">{{ kpi.inReview }}</div>
+            <div class="kpi-card__hint">Ждут проверки</div>
           </div>
         </div>
-      </el-card>
 
-      <el-empty v-if="grouped.length === 0" description="Нет записей для проверки" />
+        <div class="kpi-card kpi-card--approved">
+          <div class="kpi-card__icon">✓</div>
+          <div class="kpi-card__content">
+            <div class="kpi-card__label">Approved</div>
+            <div class="kpi-card__value">{{ kpi.Approved }}</div>
+            <div class="kpi-card__hint">Принято</div>
+          </div>
+        </div>
 
-      <div v-else class="review__groups">
-        <div v-for="g in grouped" :key="g.key" class="review__group">
-          <div class="review__groupTitle">{{ g.label }}</div>
+        <div class="kpi-card kpi-card--rejected">
+          <div class="kpi-card__icon">✕</div>
+          <div class="kpi-card__content">
+            <div class="kpi-card__label">Rejected</div>
+            <div class="kpi-card__value">{{ kpi.Rejected }}</div>
+            <div class="kpi-card__hint">Отклонено</div>
+          </div>
+        </div>
 
-          <div class="review__tableWrap">
-            <el-table :data="g.rows" class="review__table">
-              <el-table-column label="Задача" min-width="220">
-              <template #default="{ row }">
-                <div class="task">
-                  <div class="task__title">{{ resolveTitle(row) }}</div>
-                  <div class="task__meta">Тип: {{ resolveType(row) }}</div>
-                </div>
-              </template>
-            </el-table-column>
+        <div class="kpi-card kpi-card--notdone">
+          <div class="kpi-card__icon">○</div>
+          <div class="kpi-card__content">
+            <div class="kpi-card__label">Not Done</div>
+            <div class="kpi-card__value">{{ kpi.notDone }}</div>
+            <div class="kpi-card__hint">Не выполнено</div>
+          </div>
+        </div>
+      </div>
 
-            <el-table-column label="Дедлайн" width="160">
-              <template #default="{ row }">{{ fmtExpected(row) }}</template>
-            </el-table-column>
+      <!-- Filters -->
+      <div class="filters-card">
+        <el-select v-model="statusFilter" class="filter-select">
+          <el-option label="All" value="All" />
+          <el-option label="In_Review" value="In_Review" />
+          <el-option label="Approved" value="Approved" />
+          <el-option label="Rejected" value="Rejected" />
+          <el-option label="Not_Done" value="Not_Done" />
+        </el-select>
 
-            <el-table-column label="Факт" width="200">
-              <template #default="{ row }">{{ fmtDateTime(row.timestamp_ms) }}</template>
-            </el-table-column>
+        <el-input
+          v-model="search"
+          placeholder="Поиск: задача или user_id"
+          clearable
+          class="filter-input"
+        />
 
-            <el-table-column label="Статус" width="140">
-              <template #default="{ row }">
-                <el-tag :type="tagType(row.status)">{{ statusLabel(row.status) }}</el-tag>
-              </template>
-            </el-table-column>
+        <el-date-picker
+          v-model="dateRange"
+          type="daterange"
+          range-separator="—"
+          start-placeholder="От"
+          end-placeholder="До"
+          format="DD.MM.YYYY"
+          value-format="x"
+          class="filter-date"
+        />
 
-            <el-table-column label="Фото" width="190">
-              <template #default="{ row }">
-                <el-image
-                  v-if="row.photo_url"
-                  :src="row.photo_url"
-                  :preview-src-list="[row.photo_url]"
-                  :preview-teleported="true"
-                  :z-index="4000"
-                  fit="cover"
-                  style="width: 160px; height: 100px; border-radius: 10px"
-                />
-                <span v-else>—</span>
-              </template>
-            </el-table-column>
+        <div class="filters-hint">
+          Показываются только записи с <b>photo</b> (по типу задачи или по наличию photo_url)
+        </div>
+      </div>
 
-            <el-table-column label="Комментарий" min-width="220">
-              <template #default="{ row }">
-                <span v-if="row.review_comment">{{ row.review_comment }}</span>
-                <span v-else style="opacity: 0.6">—</span>
-              </template>
-            </el-table-column>
+      <div v-if="grouped.length === 0" class="empty-state">
+        <div class="empty-icon">📋</div>
+        <div class="empty-text">Нет записей для проверки</div>
+      </div>
 
-            <el-table-column label="Сотрудник" width="180">
-              <template #default="{ row }">{{ row.user_id ?? '—' }}</template>
-            </el-table-column>
+      <div v-else class="review-groups">
+        <div v-for="g in grouped" :key="g.key" class="review-group">
+          <div class="group-title">{{ g.label }}</div>
 
-            <el-table-column label="Действия" width="220" fixed="right">
-              <template #default="{ row }">
-                <template v-if="row.status === 'In_Review'">
-                  <el-button size="small" type="success" @click="approve(row)">Approve</el-button>
-                  <el-button size="small" type="danger" @click="reject(row)">Reject</el-button>
-                </template>
-                <span v-else style="opacity: 0.6">—</span>
-              </template>
-            </el-table-column>
-            </el-table>
+          <div class="table-card">
+            <div class="table-wrapper">
+              <el-table :data="g.rows">
+                <el-table-column label="Задача" min-width="220">
+                  <template #default="{ row }">
+                    <div class="task-info">
+                      <div class="task-title">{{ resolveTitle(row) }}</div>
+                      <div class="task-meta">Тип: {{ resolveType(row) }}</div>
+                    </div>
+                  </template>
+                </el-table-column>
+
+                <el-table-column label="Дедлайн" width="160">
+                  <template #default="{ row }">{{ fmtExpected(row) }}</template>
+                </el-table-column>
+
+                <el-table-column label="Факт" width="200">
+                  <template #default="{ row }">{{ fmtDateTime(row.timestamp_ms) }}</template>
+                </el-table-column>
+
+                <el-table-column label="Статус" width="140">
+                  <template #default="{ row }">
+                    <span :class="['status-badge', `status-badge--${row.status.toLowerCase()}`]">
+                      {{ statusLabel(row.status) }}
+                    </span>
+                  </template>
+                </el-table-column>
+
+                <el-table-column label="Фото" width="190">
+                  <template #default="{ row }">
+                    <el-image
+                      v-if="row.photo_url"
+                      :src="row.photo_url"
+                      :preview-src-list="[row.photo_url]"
+                      :preview-teleported="true"
+                      :z-index="4000"
+                      fit="cover"
+                      class="task-image"
+                    />
+                    <span v-else class="no-photo">—</span>
+                  </template>
+                </el-table-column>
+
+                <el-table-column label="Комментарий" min-width="220">
+                  <template #default="{ row }">
+                    <span v-if="row.review_comment" class="comment-text">{{ row.review_comment }}</span>
+                    <span v-else class="no-comment">—</span>
+                  </template>
+                </el-table-column>
+
+                <el-table-column label="Сотрудник" width="180">
+                  <template #default="{ row }">{{ row.user_id ?? '—' }}</template>
+                </el-table-column>
+
+                <el-table-column label="Действия" width="220" fixed="right">
+                  <template #default="{ row }">
+                    <div v-if="row.status === 'In_Review'" class="action-buttons">
+                      <button class="approve-btn" @click="approve(row)">Approve</button>
+                      <button class="reject-btn" @click="reject(row)">Reject</button>
+                    </div>
+                    <span v-else class="no-action">—</span>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
           </div>
         </div>
       </div>
@@ -425,128 +435,480 @@ async function reject(row: ResultRow) {
   }
 }
 
-const tagType = (s: ResultStatus) => {
-  if (s === 'Approved') return 'success'
-  if (s === 'Rejected') return 'danger'
-  if (s === 'In_Review') return 'warning'
-  if (s === 'Not_Done') return 'info'
-  return 'info'
-}
-
 const statusLabel = (s: ResultStatus) => {
   if (s === 'Approved') return 'Approved'
   if (s === 'Rejected') return 'Rejected'
-  if (s === 'In_Review') return 'In_Review'
-  if (s === 'Not_Done') return 'Not_Done'
+  if (s === 'In_Review') return 'In Review'
+  if (s === 'Not_Done') return 'Not Done'
   return s
 }
 </script>
 
 <style scoped>
-.review {
-  padding: 16px;
-  max-width: 100%;
-  overflow-x: hidden;
-}
-
-.review__head {
-  margin-bottom: 12px;
-}
-
-.review__sub {
-  margin-top: 6px;
-  font-size: 12px;
-  opacity: 0.75;
-}
-
-.review__kpi {
-  margin-bottom: 12px;
-}
-
-.kpi {
-  height: 100%;
-}
-
-.kpi__label {
-  font-size: 12px;
-  opacity: 0.75;
-  margin-bottom: 6px;
-}
-
-.kpi__value {
-  font-size: 28px;
-  font-weight: 800;
-  line-height: 1.1;
-  margin-bottom: 6px;
-}
-
-.kpi__hint {
-  font-size: 12px;
-  opacity: 0.65;
-}
-
-.review__filters {
-  margin-bottom: 12px;
-}
-
-.filters {
+.review-page {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 16px;
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.page-header {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  padding: 20px 24px;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 8px 0;
+}
+
+.page-subtitle {
+  font-size: 14px;
+  color: #666666;
+  margin: 0;
+}
+
+.warning-alert {
+  background: rgba(255, 243, 205, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.alert-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.alert-content {
+  flex: 1;
+}
+
+.alert-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #92400e;
+  margin-bottom: 4px;
+}
+
+.alert-desc {
+  font-size: 13px;
+  color: #78350f;
+  line-height: 1.5;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.kpi-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  gap: 16px;
   align-items: center;
-  flex-wrap: wrap;
+  transition: all 0.3s ease;
 }
 
-.filters__hint {
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.kpi-card__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.kpi-card--review .kpi-card__icon {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.kpi-card--approved .kpi-card__icon {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.kpi-card--rejected .kpi-card__icon {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.kpi-card--notdone .kpi-card__icon {
+  background: rgba(148, 163, 184, 0.1);
+  color: #94a3b8;
+}
+
+.kpi-card__content {
+  flex: 1;
+}
+
+.kpi-card__label {
+  font-size: 13px;
+  color: #666666;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.kpi-card__value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1a1a1a;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.kpi-card__hint {
   font-size: 12px;
-  opacity: 0.7;
+  color: #999999;
 }
 
-.review__tableWrap {
+.filters-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  padding: 20px 24px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filter-select {
+  width: 180px;
+}
+
+.filter-input {
+  width: 320px;
+}
+
+.filter-date {
+  width: 300px;
+}
+
+.filters-hint {
+  font-size: 12px;
+  color: #666666;
+  flex-basis: 100%;
+}
+
+.empty-state {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  padding: 60px 24px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: #666666;
+}
+
+.review-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.review-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.group-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+  padding: 0 4px;
+}
+
+.table-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.table-wrapper {
   width: 100%;
   overflow-x: auto;
 }
 
-.review__table {
-  width: 100%;
-  min-width: 980px; /* keeps fixed-right column from expanding the whole page */
-}
-
-.task__title {
-  font-weight: 800;
-}
-
-.task__meta {
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-.review__groups {
+.task-info {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 4px;
 }
 
-.review__groupTitle {
-  font-weight: 900;
-  margin: 4px 0 10px;
+.task-title {
+  font-weight: 600;
+  color: #1a1a1a;
 }
-/* Make Element Plus image preview always appear above fixed columns/sidebar */
+
+.task-meta {
+  font-size: 12px;
+  color: #999999;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-badge--in_review {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.status-badge--approved {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.status-badge--rejected {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.status-badge--not_done {
+  background: rgba(148, 163, 184, 0.1);
+  color: #94a3b8;
+}
+
+.task-image {
+  width: 160px;
+  height: 100px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.no-photo {
+  color: #999999;
+}
+
+.comment-text {
+  color: #1a1a1a;
+  font-size: 14px;
+}
+
+.no-comment {
+  color: #999999;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.approve-btn,
+.reject-btn {
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid;
+}
+
+.approve-btn {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.approve-btn:hover {
+  background: rgba(34, 197, 94, 0.2);
+}
+
+.reject-btn {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.reject-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.no-action {
+  color: #999999;
+}
+
+/* Element Plus overrides */
+:deep(*) {
+  font-family: inherit;
+}
+
+:deep(.el-overlay) {
+  background-color: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(8px);
+}
+
+:deep(.el-table) {
+  background: transparent;
+  color: #1a1a1a;
+  min-width: 980px;
+}
+
+:deep(.el-table__header-wrapper) {
+  background: transparent;
+}
+
+:deep(.el-table th.el-table__cell) {
+  background: rgba(0, 0, 0, 0.03);
+  backdrop-filter: blur(8px);
+  color: #666666;
+  font-weight: 600;
+  font-size: 13px;
+  border: none;
+}
+
+:deep(.el-table td.el-table__cell) {
+  background: transparent;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+:deep(.el-table__row:hover > td) {
+  background: rgba(0, 0, 0, 0.02) !important;
+}
+
+:deep(.el-table::before) {
+  display: none;
+}
+
+:deep(.el-select .el-input__wrapper) {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+:deep(.el-input__wrapper) {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+:deep(.el-date-editor) {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+:deep(.el-skeleton) {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+:deep(.el-button--primary) {
+  background: rgba(0, 0, 0, 0.9) !important;
+  backdrop-filter: blur(8px);
+  border-color: rgba(0, 0, 0, 0.2) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+:deep(.el-button--primary:hover) {
+  background: rgba(0, 0, 0, 1) !important;
+}
+
+:deep(.el-popper) {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
 .el-image-viewer__wrapper {
   z-index: 4000 !important;
 }
-.review__groups {
-  min-width: 0;
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filters-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-select,
+  .filter-input,
+  .filter-date {
+    width: 100%;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .approve-btn,
+  .reject-btn {
+    width: 100%;
+  }
 }
 
-.review__group {
-  min-width: 0;
-}
+@media (max-width: 480px) {
+  .page-title {
+    font-size: 20px;
+  }
 
-.review__tableWrap {
-  min-width: 0;
+  .kpi-card {
+    padding: 16px;
+  }
+
+  .kpi-card__value {
+    font-size: 28px;
+  }
 }
 </style>
-
-
-
-
