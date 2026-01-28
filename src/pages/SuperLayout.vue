@@ -10,100 +10,353 @@
   const router = useRouter()
   const auth = useAuthStore()
 
-  // const displayName = computed(() => {
-  //   const p = auth.profile
-  //   return p?.name || p?.email || p?.login || 'Superadmin'
-  // })
-
   const active = computed(() => route.path)
+
+  const shouldRender = computed(() => {
+    // Не рендерим если идет процесс выхода или нет профиля
+    return !auth.loggingOut && auth.profile !== null
+  })
 
   const logout = async () => {
     await auth.logout()
     ElMessage.success('Вы вышли')
     await router.replace('/login')
   }
-  </script>
+</script>
 
-  <template>
-    <div class="layout">
-      <aside class="sidebar">
-        <div class="brand">Checklist SuperADM</div>
-
-        <el-menu :default-active="active" router class="menu">
-          <el-menu-item index="/super/overview">Обзор</el-menu-item>
-          <el-menu-item index="/super/coffeeshops">Кофешопы</el-menu-item>
-          <el-menu-item index="/super/users">Пользователи</el-menu-item>
-        </el-menu>
-      </aside>
-
-      <main class="content">
-        <div class="topbar">
-          <div class="left">
-            <div class="title">Панель SUPERADMIN</div>
-          </div>
-
-          <div class="right">
-            <!-- <el-tag type="info" effect="plain">SUPERADMIN</el-tag>
-            <div class="user">{{ displayName }}</div> -->
-            <el-button type="danger" plain @click="logout">Выйти</el-button>
-          </div>
+<template>
+  <div v-if="shouldRender" class="layout">
+    <aside class="sidebar">
+      <div class="sidebar__header">
+        <div class="logo">
+          <img src="../assets/img/checklist-logo.png" alt="">
         </div>
+        <div class="sidebar__title">Checklist SuperADM</div>
+      </div>
 
-        <div class="page">
-          <router-view />
+      <el-menu :default-active="active" router class="sidebar__menu">
+        <el-menu-item index="/super/overview">
+          <span class="menu-text">Обзор</span>
+        </el-menu-item>
+        <el-menu-item index="/super/coffeeshops">
+          <span class="menu-text">Кофешопы</span>
+        </el-menu-item>
+        <el-menu-item index="/super/users">
+          <span class="menu-text">Пользователи</span>
+        </el-menu-item>
+      </el-menu>
+    </aside>
+
+    <main class="content">
+      <div class="topbar">
+        <div class="topbar__left">
+          <div class="topbar__title">Панель SUPERADMIN</div>
         </div>
-      </main>
-    </div>
-  </template>
+        <button class="logout-btn" @click="logout">Выйти</button>
+      </div>
 
-  <style scoped>
+      <div class="content__body">
+        <router-view />
+      </div>
+    </main>
+  </div>
+</template>
+
+<style scoped>
+.layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
+  background: #ffffff;
+  gap: 16px;
+  padding: 16px;
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.sidebar {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  padding: 24px;
+  height: fit-content;
+  position: sticky;
+  top: 16px;
+}
+
+.sidebar__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(8px);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.logo img {
+  width: 36px;
+  height: 36px;
+  color: #1a1a1a;
+}
+
+.sidebar__title {
+  font-weight: 600;
+  font-size: 16px;
+  color: #1a1a1a;
+}
+
+.sidebar__menu {
+  border: none;
+  background: transparent;
+}
+
+:deep(*) {
+  font-family: inherit;
+}
+
+:deep(.el-menu-item) {
+  height: 44px;
+  line-height: 44px;
+  margin-bottom: 4px;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.3s ease;
+  color: #666666;
+  font-weight: 500;
+}
+
+:deep(.el-menu-item:hover) {
+  background: rgba(0, 0, 0, 0.03);
+  backdrop-filter: blur(8px);
+  color: #1a1a1a;
+}
+
+:deep(.el-menu-item.is-active) {
+  background: rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.menu-text {
+  font-size: 15px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.topbar {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+}
+
+.topbar__left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.topbar__title {
+  font-weight: 600;
+  font-size: 20px;
+  color: #1a1a1a;
+}
+
+.logout-btn {
+  height: 40px;
+  padding: 0 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #1a1a1a;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.logout-btn:active {
+  transform: translateY(0);
+}
+
+.content__body {
+  min-height: 400px;
+}
+
+/* Адаптивность для планшетов */
+@media (max-width: 1024px) {
   .layout {
-    display: grid;
-    grid-template-columns: 260px 1fr;
-    height: 100vh;
-    background: #f7f8fa;
+    grid-template-columns: 240px 1fr;
+    gap: 12px;
+    padding: 12px;
   }
+
   .sidebar {
-    background: #fff;
-    border-right: 1px solid #ececec;
-    padding: 16px 12px;
+    padding: 20px;
   }
-  .brand {
-    font-weight: 900;
-    font-size: 18px;
-    padding: 8px 12px 14px;
-  }
-  .menu {
-    border-right: none;
-  }
-  .content {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-  }
+
   .topbar {
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 18px;
-    background: #fff;
-    border-bottom: 1px solid #ececec;
+    padding: 16px 20px;
   }
-  .title {
-    font-weight: 800;
+
+  .content__body {
+    padding: 20px;
   }
-  .right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+  .layout {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 12px;
   }
-  .user {
-    font-weight: 700;
-    opacity: 0.85;
+
+  .sidebar {
+    position: static;
+    height: auto;
   }
-  .page {
-    padding: 18px;
-    overflow: auto;
+
+  .sidebar__header {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
   }
-  </style>
+
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .topbar__left {
+    text-align: center;
+  }
+
+  .logout-btn {
+    width: 100%;
+  }
+
+  .content__body {
+    padding: 16px;
+  }
+}
+
+/* Очень маленькие экраны */
+@media (max-width: 480px) {
+  .layout {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .sidebar {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .sidebar__header {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+  }
+
+  .logo {
+    width: 36px;
+    height: 36px;
+  }
+
+  .logo svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .sidebar__title {
+    font-size: 16px;
+  }
+
+  :deep(.el-menu-item) {
+    height: 40px;
+    line-height: 40px;
+  }
+
+  .menu-text {
+    font-size: 14px;
+  }
+
+  .topbar {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .topbar__title {
+    font-size: 18px;
+  }
+
+  .content__body {
+    padding: 16px;
+    border-radius: 12px;
+  }
+}
+
+/* Element Plus Button Overrides */
+:deep(.el-button--primary) {
+  background: rgba(0, 0, 0, 0.9) !important;
+  backdrop-filter: blur(8px);
+  border-color: rgba(0, 0, 0, 0.2) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+:deep(.el-button--primary:hover) {
+  background: rgba(0, 0, 0, 1) !important;
+  border-color: rgba(0, 0, 0, 0.3) !important;
+}
+
+:deep(.el-button--primary:focus) {
+  background: rgba(0, 0, 0, 0.9) !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+:deep(.el-button--default) {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #1a1a1a;
+}
+
+:deep(.el-button--default:hover) {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+</style>

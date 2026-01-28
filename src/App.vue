@@ -25,19 +25,17 @@ body { margin: 0; font-family: "Montserrat";}
   font-family: 'Montserrat', sans-serif;
 }
 
-/* actual typed text */
 .el-input__inner,
 .el-textarea__inner,
 .el-select__selected-item {
   font-family: 'Montserrat', sans-serif;
 }
 
-/* placeholder */
 .el-input__inner::placeholder,
 .el-textarea__inner::placeholder {
   font-family: 'Montserrat', sans-serif;
   font-weight: 400;
-  color: #9ca3af; /* мягкий серый */
+  color: #9ca3af;
 }
 
 </style>
