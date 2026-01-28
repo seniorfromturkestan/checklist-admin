@@ -1,5 +1,3 @@
-
-
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -86,12 +84,12 @@ const statusLabel = (s: TaskResultStatus) => {
   return 'Отклонено'
 }
 
-const statusTag = (s: TaskResultStatus): 'info' | 'warning' | 'success' | 'danger' => {
-  if (s === 'Approved') return 'success'
-  if (s === 'Rejected') return 'danger'
-  if (s === 'In_Review') return 'warning'
-  return 'info'
-}
+// const statusTag = (s: TaskResultStatus): 'info' | 'warning' | 'success' | 'danger' => {
+//   if (s === 'Approved') return 'success'
+//   if (s === 'Rejected') return 'danger'
+//   if (s === 'In_Review') return 'warning'
+//   return 'info'
+// }
 
 const openPhoto = (url?: string | null) => {
   if (!url) return
@@ -311,240 +309,652 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="wrap">
-    <div class="head">
-      <div>
-        <div class="h1">Обзор</div>
-        показать, что происходит в выбранной кофейне (последние {{ daysBack }} дней)
+  <div class="overview-page">
+    <div class="page-header">
+      <div class="header-content">
+        <h1 class="page-title">Обзор</h1>
+        <p class="page-subtitle">Показать, что происходит в выбранной кофейне (последние {{ daysBack }} дней)</p>
       </div>
 
-      <div class="actions">
+      <div class="header-actions">
         <el-select
           v-model="shopId"
           :loading="loadingShops"
           placeholder="Выберите кофешоп"
-          style="width: 300px"
+          class="shop-select"
         >
           <el-option v-for="s in shops" :key="s.id" :label="`${s.name} (ID: ${s.id})`" :value="s.id" />
         </el-select>
 
-        <el-select v-model="daysBack" style="width: 140px">
+        <el-select v-model="daysBack" class="days-select">
           <el-option :value="7" label="7 дней" />
           <el-option :value="14" label="14 дней" />
           <el-option :value="30" label="30 дней" />
         </el-select>
 
-        <el-button :disabled="!hasShop" @click="loadOverview">Обновить</el-button>
+        <button class="refresh-btn" :disabled="!hasShop" @click="loadOverview">Обновить</button>
       </div>
     </div>
 
-    <el-card v-loading="loading" class="cards">
-      <div class="grid">
-        <div class="card">
-          <div class="label">Задачи (всего)</div>
-          <div class="value">{{ tasksTotal }}</div>
-          <div class="sub">Фото-задачи: {{ tasksPhoto }}</div>
-        </div>
-
-        <div class="card">
-          <div class="label">Выполнено</div>
-          <div class="value">{{ counts.Approved }}</div>
-          <div class="sub">Статус: Approved</div>
-        </div>
-
-        <div class="card">
-          <div class="label">В обработке</div>
-          <div class="value">{{ counts.In_Review }}</div>
-          <div class="sub">Статус: In_Review</div>
-        </div>
-
-
-        <div class="card">
-          <div class="label">Отклонено</div>
-          <div class="value">{{ counts.Rejected }}</div>
-          <div class="sub">Статус: Rejected</div>
-        </div>
-
-        <div class="card">
-          <div class="label">Не выполнено</div>
-          <div class="value">{{ counts.Not_Done }}</div>
-          <div class="sub">Статус: Not_Done</div>
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card kpi-card--tasks">
+        <div class="kpi-card__icon">📊</div>
+        <div class="kpi-card__content">
+          <div class="kpi-card__label">Задачи (всего)</div>
+          <div class="kpi-card__value">{{ tasksTotal }}</div>
+          <div class="kpi-card__hint">Фото-задачи: {{ tasksPhoto }}</div>
         </div>
       </div>
-    </el-card>
 
-    <el-card v-loading="loading">
-      <div class="h2">Кто что делал</div>
-      <div class="muted">Сводка по сотрудникам за последние {{ daysBack }} дней</div>
+      <div class="kpi-card kpi-card--approved">
+        <div class="kpi-card__icon">✓</div>
+        <div class="kpi-card__content">
+          <div class="kpi-card__label">Выполнено</div>
+          <div class="kpi-card__value">{{ counts.Approved }}</div>
+          <div class="kpi-card__hint">Статус: Approved</div>
+        </div>
+      </div>
 
-      <!-- (Пока убрали блоки "Топ сотрудников" и "Последние активности") -->
+      <div class="kpi-card kpi-card--review">
+        <div class="kpi-card__icon">⏳</div>
+        <div class="kpi-card__content">
+          <div class="kpi-card__label">В обработке</div>
+          <div class="kpi-card__value">{{ counts.In_Review }}</div>
+          <div class="kpi-card__hint">Статус: In_Review</div>
+        </div>
+      </div>
 
-      <div class="miniTitle" style="margin-top: 14px">Все сотрудники (детально)</div>
-      <el-table :data="byUser" style="width: 100%" size="small">
-        <el-table-column prop="user_name" label="Сотрудник" min-width="220" />
-        <el-table-column prop="Approved" label="Выполнено" width="120" />
-        <el-table-column prop="In_Review" label="В обработке" width="130" />
-        <el-table-column prop="Rejected" label="Отклонено" width="120" />
-        <el-table-column prop="Not_Done" label="Не выполнено" width="130" />
-        <el-table-column prop="total" label="Всего" width="90" />
-        <el-table-column label="Эффективность" width="170">
-          <template #default="{ row }">
-            <div class="rate">
-              <div class="rate__bar"><el-progress :percentage="row.rate" /></div>
-              <div class="rate__text">{{ row.rate }}%</div>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="kpi-card kpi-card--rejected">
+        <div class="kpi-card__icon">✕</div>
+        <div class="kpi-card__content">
+          <div class="kpi-card__label">Отклонено</div>
+          <div class="kpi-card__value">{{ counts.Rejected }}</div>
+          <div class="kpi-card__hint">Статус: Rejected</div>
+        </div>
+      </div>
 
-      <div class="muted small" style="margin-top: 10px">
+      <div class="kpi-card kpi-card--notdone">
+        <div class="kpi-card__icon">○</div>
+        <div class="kpi-card__content">
+          <div class="kpi-card__label">Не выполнено</div>
+          <div class="kpi-card__value">{{ counts.Not_Done }}</div>
+          <div class="kpi-card__hint">Статус: Not_Done</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Staff Performance -->
+    <div class="content-card">
+      <div class="card-header">
+        <h2 class="card-title">Кто что делал</h2>
+        <p class="card-subtitle">Сводка по сотрудникам за последние {{ daysBack }} дней</p>
+      </div>
+
+      <div class="section-title">Все сотрудники (детально)</div>
+
+      <div class="table-wrapper">
+        <el-table :data="byUser" v-loading="loading">
+          <el-table-column prop="user_name" label="Сотрудник" min-width="220" />
+
+          <el-table-column label="Выполнено" width="120">
+            <template #default="{ row }">
+              <span class="stat-value stat-value--approved">{{ row.Approved }}</span>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="В обработке" width="130">
+            <template #default="{ row }">
+              <span class="stat-value stat-value--review">{{ row.In_Review }}</span>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="Отклонено" width="120">
+            <template #default="{ row }">
+              <span class="stat-value stat-value--rejected">{{ row.Rejected }}</span>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="Не выполнено" width="130">
+            <template #default="{ row }">
+              <span class="stat-value stat-value--notdone">{{ row.Not_Done }}</span>
+            </template>
+          </el-table-column>
+
+          <el-table-column prop="total" label="Всего" width="90" />
+
+          <el-table-column label="Эффективность" width="200">
+            <template #default="{ row }">
+              <div class="efficiency">
+                <div class="efficiency-bar">
+                  <div class="efficiency-fill" :style="{ width: row.rate + '%' }"></div>
+                </div>
+                <div class="efficiency-text">{{ row.rate }}%</div>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <div class="card-note">
         * Эффективность считается по базе Approved / Not_Done (без In_Review и Rejected).
       </div>
-    </el-card>
+    </div>
 
-    <el-card v-loading="loading">
-      <div class="h2">Последние результаты</div>
-      <div class="muted">Фильтр по дате: от {{ fmtDate(fromDate) }}</div>
+    <!-- Recent Results -->
+    <div class="content-card">
+      <div class="card-header">
+        <h2 class="card-title">Последние результаты</h2>
+        <p class="card-subtitle">Фильтр по дате: от {{ fmtDate(fromDate) }}</p>
+      </div>
 
-      <el-table :data="results" style="width: 100%; margin-top: 10px">
-        <el-table-column prop="date" label="День" width="120">
-          <template #default="{ row }">{{ fmtDate(row.date) }}</template>
-        </el-table-column>
+      <div class="table-wrapper">
+        <el-table :data="results" v-loading="loading">
+          <el-table-column label="День" width="120">
+            <template #default="{ row }">{{ fmtDate(row.date) }}</template>
+          </el-table-column>
 
-        <el-table-column prop="title" label="Задача" min-width="220" />
+          <el-table-column prop="title" label="Задача" min-width="220" />
 
-        <el-table-column prop="type" label="Тип" width="120">
-          <template #default="{ row }">{{ row.type ?? '—' }}</template>
-        </el-table-column>
+          <el-table-column label="Тип" width="120">
+            <template #default="{ row }">
+              <span class="type-badge">{{ row.type ?? '—' }}</span>
+            </template>
+          </el-table-column>
 
-        <el-table-column label="Дедлайн" width="130">
-          <template #default="{ row }">{{ fmtTime(row.expected_finish_time) }}</template>
-        </el-table-column>
+          <el-table-column label="Дедлайн" width="130">
+            <template #default="{ row }">{{ fmtTime(row.expected_finish_time) }}</template>
+          </el-table-column>
 
-        <el-table-column label="Факт" width="180">
-          <template #default="{ row }">{{ fmtDateTime(row.timestamp ?? row.actual_finish_time ?? null) }}</template>
-        </el-table-column>
+          <el-table-column label="Факт" width="180">
+            <template #default="{ row }">{{ fmtDateTime(row.timestamp ?? row.actual_finish_time ?? null) }}</template>
+          </el-table-column>
 
-        <el-table-column label="Статус" width="150">
-          <template #default="{ row }">
-            <el-tag :type="statusTag(row.status)" effect="plain">{{ statusLabel(row.status) }}</el-tag>
-          </template>
-        </el-table-column>
+          <el-table-column label="Статус" width="150">
+            <template #default="{ row }">
+              <span :class="['status-badge', `status-badge--${row.status.toLowerCase()}`]">
+                {{ statusLabel(row.status) }}
+              </span>
+            </template>
+          </el-table-column>
 
-        <el-table-column label="Фото" width="120">
-          <template #default="{ row }">
-            <el-button v-if="row.photo_url" size="small" type="primary" plain @click="openPhoto(row.photo_url)">
-              Открыть
-            </el-button>
-            <span v-else class="muted">—</span>
-          </template>
-        </el-table-column>
+          <el-table-column label="Фото" width="120">
+            <template #default="{ row }">
+              <button v-if="row.photo_url" class="photo-btn" @click="openPhoto(row.photo_url)">
+                Открыть
+              </button>
+              <span v-else class="no-data">—</span>
+            </template>
+          </el-table-column>
 
-        <el-table-column prop="user_id" label="Сотрудник" width="160" />
+          <el-table-column prop="user_id" label="Сотрудник" width="160" />
 
-        <el-table-column prop="review_comment" label="Комментарий" min-width="220" />
-      </el-table>
-
-      <!-- <div class="muted small" style="margin-top: 10px">
-        Если понадобится точная агрегация (быстрее и без limit), добавим индексы и where('date','>=',fromDate).
-      </div> -->
-    </el-card>
+          <el-table-column prop="review_comment" label="Комментарий" min-width="220">
+            <template #default="{ row }">
+              <span v-if="row.review_comment" class="comment-text">{{ row.review_comment }}</span>
+              <span v-else class="no-data">—</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.wrap {
-  display: grid;
-  gap: 14px;
+.overview-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-.head {
+.page-header {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  padding: 20px 24px;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 12px;
+  gap: 20px;
 }
 
-.h1 {
-  font-weight: 900;
-  font-size: 20px;
+.header-content {
+  flex: 1;
 }
 
-.h2 {
-  font-weight: 900;
-  font-size: 16px;
+.page-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 4px 0;
 }
 
-.actions {
+.page-subtitle {
+  font-size: 14px;
+  color: #666666;
+  margin: 0;
+}
+
+.header-actions {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
-.cards .grid {
+.shop-select {
+  width: 300px;
+}
+
+.days-select {
+  width: 140px;
+}
+
+.refresh-btn {
+  height: 40px;
+  padding: 0 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 1);
+  transform: translateY(-1px);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.kpi-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.kpi-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.kpi-card__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.kpi-card--tasks .kpi-card__icon {
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+}
+
+.kpi-card--approved .kpi-card__icon {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.kpi-card--review .kpi-card__icon {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.kpi-card--rejected .kpi-card__icon {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.kpi-card--notdone .kpi-card__icon {
+  background: rgba(148, 163, 184, 0.1);
+  color: #94a3b8;
+}
+
+.kpi-card__content {
+  flex: 1;
+}
+
+.kpi-card__label {
+  font-size: 13px;
+  color: #666666;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.kpi-card__value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1a1a1a;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.kpi-card__hint {
+  font-size: 12px;
+  color: #999999;
+}
+
+.content-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.card-header {
+  margin-bottom: 20px;
+}
+
+.card-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 8px 0;
+}
+
+.card-subtitle {
+  font-size: 13px;
+  color: #666666;
+  margin: 0;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 16px 0;
+}
+
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  margin-bottom: 12px;
+}
+
+.card-note {
+  font-size: 12px;
+  color: #999999;
+  margin-top: 12px;
+}
+
+.stat-value {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.stat-value--approved {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.stat-value--review {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.stat-value--rejected {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.stat-value--notdone {
+  background: rgba(148, 163, 184, 0.1);
+  color: #94a3b8;
+}
+
+.efficiency {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 
-@media (max-width: 1200px) {
-  .cards .grid {
-    grid-template-columns: repeat(2, minmax(180px, 1fr));
+.efficiency-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  overflow: hidden;
+  min-width: 100px;
+}
+
+.efficiency-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
+.efficiency-text {
+  min-width: 45px;
+  text-align: right;
+  font-weight: 600;
+  color: #1a1a1a;
+  font-size: 14px;
+}
+
+.type-badge {
+  font-size: 13px;
+  color: #666666;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-badge--in_review {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.status-badge--approved {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.status-badge--rejected {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.status-badge--not_done {
+  background: rgba(148, 163, 184, 0.1);
+  color: #94a3b8;
+}
+
+.photo-btn {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  color: #6366f1;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.photo-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.comment-text {
+  color: #1a1a1a;
+  font-size: 14px;
+}
+
+.no-data {
+  color: #999999;
+}
+
+/* Element Plus overrides */
+:deep(*) {
+  font-family: inherit;
+}
+
+:deep(.el-table) {
+  background: transparent;
+  color: #1a1a1a;
+}
+
+:deep(.el-table__header-wrapper) {
+  background: transparent;
+}
+
+:deep(.el-table th.el-table__cell) {
+  background: rgba(0, 0, 0, 0.03);
+  backdrop-filter: blur(8px);
+  color: #666666;
+  font-weight: 600;
+  font-size: 13px;
+  border: none;
+}
+
+:deep(.el-table td.el-table__cell) {
+  background: transparent;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+:deep(.el-table__row:hover > td) {
+  background: rgba(0, 0, 0, 0.02) !important;
+}
+
+:deep(.el-table::before) {
+  display: none;
+}
+
+:deep(.el-select .el-input__wrapper) {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+:deep(.el-select .el-input__wrapper:hover) {
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+:deep(.el-select .el-input.is-focus .el-input__wrapper) {
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+:deep(.el-popper) {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+:deep(.el-button--primary) {
+  background: rgba(0, 0, 0, 0.9) !important;
+  backdrop-filter: blur(8px);
+  border-color: rgba(0, 0, 0, 0.2) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+:deep(.el-button--primary:hover) {
+  background: rgba(0, 0, 0, 1) !important;
+}
+
+:deep(.el-loading-mask) {
+  background-color: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+}
+
+/* Адаптивность */
+@media (max-width: 1024px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-actions {
+    justify-content: stretch;
+  }
+
+  .shop-select,
+  .days-select {
+    flex: 1;
+    min-width: 140px;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   }
 }
 
-.card {
-  background: #fff;
-  border: 1px solid #f0f0f0;
-  border-radius: 12px;
-  padding: 12px 14px;
+@media (max-width: 768px) {
+  .header-actions {
+    flex-direction: column;
+  }
+
+  .shop-select,
+  .days-select,
+  .refresh-btn {
+    width: 100%;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+  }
+
+  :deep(.el-table) {
+    min-width: 1000px;
+  }
 }
 
-.label {
-  opacity: 0.7;
-  font-size: 12px;
-}
+@media (max-width: 480px) {
+  .page-title {
+    font-size: 20px;
+  }
 
-.value {
-  font-size: 26px;
-  font-weight: 900;
-  margin-top: 2px;
-}
+  .kpi-card {
+    padding: 16px;
+  }
 
-.sub {
-  opacity: 0.7;
-  font-size: 12px;
-  margin-top: 4px;
-}
+  .kpi-card__value {
+    font-size: 28px;
+  }
 
-.muted {
-  opacity: 0.7;
-}
-
-.small {
-  font-size: 12px;
-}
-
-.miniTitle {
-  font-weight: 800;
-  margin: 6px 0 8px;
-}
-
-.rate {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.rate__bar {
-  flex: 1;
-  min-width: 120px;
-}
-
-.rate__text {
-  width: 52px;
-  text-align: right;
-  font-weight: 700;
+  .content-card {
+    padding: 20px;
+  }
 }
 </style>

@@ -23,21 +23,20 @@ const adminName = computed(() => {
   return (p?.name || p?.email || p?.login || 'Админ') as string
 })
 
+const shouldRender = computed(() => {
+  // Не рендерим если идет процесс выхода или нет профиля
+  return !auth.loggingOut && auth.profile !== null
+})
+
 const onLogout = async () => {
-  try {
-    await auth.logout()
-    ElMessage.success('Вы вышли из системы')
-    await router.replace('/login')
-  } catch (err) {
-    console.error('Logout error:', err)
-    ElMessage.success('Вы вышли из системы')
-    await router.replace('/login')
-  }
+  await auth.logout()
+  ElMessage.success('Вы вышли из системы')
+  await router.replace('/login')
 }
 </script>
 
 <template>
-  <div class="layout">
+  <div v-if="shouldRender" class="layout">
     <aside class="sidebar">
       <div class="sidebar__header">
         <div class="logo">
@@ -122,7 +121,7 @@ const onLogout = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   flex-shrink: 0;
 }
 
@@ -329,7 +328,10 @@ const onLogout = async () => {
     height: 36px;
   }
 
-  
+  .logo svg {
+    width: 18px;
+    height: 18px;
+  }
 
   .sidebar__title {
     font-size: 16px;
@@ -357,5 +359,36 @@ const onLogout = async () => {
     padding: 16px;
     border-radius: 12px;
   }
+}
+
+/* Element Plus Button Overrides */
+:deep(.el-button--primary) {
+  background: rgba(0, 0, 0, 0.9) !important;
+  backdrop-filter: blur(8px);
+  border-color: rgba(0, 0, 0, 0.2) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+:deep(.el-button--primary:hover) {
+  background: rgba(0, 0, 0, 1) !important;
+  border-color: rgba(0, 0, 0, 0.3) !important;
+}
+
+:deep(.el-button--primary:focus) {
+  background: rgba(0, 0, 0, 0.9) !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+:deep(.el-button--default) {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #1a1a1a;
+}
+
+:deep(.el-button--default:hover) {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.2);
 }
 </style>
